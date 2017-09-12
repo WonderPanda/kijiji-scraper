@@ -12,7 +12,9 @@ namespace KijijiScraper
     public static class TestCallback
     {
         [FunctionName("TestCallback")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)]HttpRequestMessage req, TraceWriter log)
+        public static async Task<HttpResponseMessage> Run(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)]HttpRequestMessage req, 
+            TraceWriter log)
         {
             log.Info("C# callback test received kijiji ads");
             
