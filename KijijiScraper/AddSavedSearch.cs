@@ -7,6 +7,10 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using KijijiScraper.Models;
 using System;
+using KijijiScraper.Common;
+using System.ComponentModel.DataAnnotations;
+using System.Collections.Generic;
+using KijijiScraper.Utilities;
 
 namespace KijijiScraper
 {
@@ -16,24 +20,22 @@ namespace KijijiScraper
         [FunctionName("AddSavedSearch")]
         public static async Task<HttpResponseMessage> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)]HttpRequestMessage req,
-            [Table("SavedSearches")] IAsyncCollector<KijijiSearchItem> savedSearchTable,
+            [Table(Tables.SavedSearchesTable)] IAsyncCollector<KijijiSearchItem> savedSearchTable,
             TraceWriter log)
         {
-            // Get request body
-            dynamic data = await req.Content.ReadAsAsync<object>();
-            var searchUrl = data?.searchUrl?.ToString();
-            var webhookUrl = data?.webhookUrl?.ToString();
+            var searchItem = await req.Content.ReadAsAsync<KijijiSearchItemDto>() ?? new KijijiSearchItemDto();
+            List<ValidationResult> results;
+            var isValid = Validation.ValidateModel(searchItem, out results);
 
-            if (searchUrl == null || webhookUrl == null)
-                return req.CreateResponse(HttpStatusCode.BadRequest, "searchUrl and webhookUrl are required");
-
+            if (!isValid) return req.CreateResponse(HttpStatusCode.BadRequest, results);
+            
             var savedSearch = new KijijiSearchItem
             {
                 PartitionKey = "SavedSearches",
-                RowKey = WebUtility.UrlEncode(searchUrl),
-                SearchUrl = searchUrl,
-                WebhookUrl = webhookUrl,
-                NewerThan = DateTime.UtcNow - TimeSpan.FromHours(5)
+                RowKey = WebUtility.UrlEncode(searchItem.SearchUrl),
+                SearchUrl = searchItem.SearchUrl,
+                WebhookUrl = searchItem.WebhookUrl,
+                NewerThan = DateTime.UtcNow - TimeSpan.FromDays(2.0)
             };
 
             await savedSearchTable.AddAsync(savedSearch);

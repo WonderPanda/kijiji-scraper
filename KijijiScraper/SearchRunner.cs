@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Net.Http;
 using System.Linq;
+using KijijiScraper.Common;
+using Microsoft.Extensions.Logging;
 
 namespace KijijiScraper
 {
@@ -15,13 +17,14 @@ namespace KijijiScraper
 
         [FunctionName("SearchRunner")]
         public static async Task Run(
-            [QueueTrigger("SearchItems")]KijijiSearchItem searchItem,
-            [Table("SavedSearches")]CloudTable savedSearchesTable,
-            TraceWriter log)
+            [QueueTrigger(Queues.SearchItemQueue)]KijijiSearchItem searchItem,
+            [Table(Tables.SavedSearchesTable)]CloudTable savedSearchesTable,
+            ExecutionContext context,
+            ILogger logger)
         {
-            var scraper = new Utilities.KijijiScraper();
+            var scraper = new Utilities.KijijiScraper(Services.TelemetryClient.Value);
 
-            var ads = await scraper.GetAds(searchItem.SearchUrl, searchItem.NewerThan);
+            var ads = await scraper.GetAds(context.InvocationId.ToString(), searchItem.SearchUrl, searchItem.NewerThan);
 
             if (!ads.Any()) return;
 
